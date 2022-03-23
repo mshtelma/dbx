@@ -1,0 +1,61 @@
+name: {{cookiecutter.project_slug}}
+stage: Staging
+mlflow_experiment_path: /Shared/dbx/{{cookiecutter.model}}
+modules:
+  - {{cookiecutter.package}}.{{cookiecutter.model}}
+
+
+source_tables:
+  {{cookiecutter.model}}_train_source:
+    format: csv
+    path: tests/unit/data/leclub.csv
+  {{cookiecutter.model}}_scoring:
+    format: csv
+    path: tests/unit/data/leclub.csv
+
+models:
+    {{cookiecutter.model}}:
+      flavour: sklearn
+      target_column: bad_loan
+      test_size: 0.2
+      params:
+        - name: n_estimators
+          default: 10
+          search_space: "...."
+
+pipelines:
+    {{cookiecutter.model}}_train:
+      type: model_train
+      train_options:
+        model_name: {{cookiecutter.model}}
+        train_dataset: {{cookiecutter.model}}_dataset
+        promote_in_registry: true
+        initial_stage: Staging
+      variables:
+        - variable: source_df
+          value: {{cookiecutter.model}}_train_source
+      split: true
+
+    {{cookiecutter.model}}_scoring_spark:
+      type: spark_batch
+      models:
+        - model_name: {{cookiecutter.model}}
+          model_selection: model_registry
+      variables:
+        - variable: source_df
+          value: {{cookiecutter.model}}_scoring
+      params:
+        format: parquet
+        table_name: le_out1
+
+    {{cookiecutter.model}}_scoring_pandas:
+      type: spark_batch
+      models:
+        - model_name: {{cookiecutter.model}}
+          model_selection: model_registry
+      variables:
+        - variable: source_df
+          value: {{cookiecutter.model}}_scoring
+      params:
+        format: parquet
+        table_name: le_out2
